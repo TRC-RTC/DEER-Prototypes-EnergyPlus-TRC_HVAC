@@ -242,8 +242,12 @@ AirTerminal:SingleDuct:VAV:Reheat,
   ,                        !- Maximum Flow per Zone Floor Area During Reheat {m3/s-m2}
   <%= atu_reheat_max_frac %>,                        !- Maximum Flow Fraction During Reheat
   <%= atu_reheat_max_sat %>,  !- Maximum Reheat Air Temperature {C}
-<%# TRC - change so minimum flow can be autosized to account for OA requirement %>
-  <%= design_spec_OA_name %>;  !- Design Specification Outdoor Air Object Name
+<%
+# TRC - change so minimum flow can be autosized to account for OA requirement
+# _NOTE - Adding Design Specification Outdoor Air Object Name here breaks outdoor airflow when economizer type = NoEconomizer_
+%>
+  !<%= design_spec_OA_name %>;  !- Design Specification Outdoor Air Object Name
+  ;  !- Design Specification Outdoor Air Object Name
 <%#
 Design OA controls the damper to meet outdoor air based on varying number of occupants.
 Do we want this in general? Or only for DCV?

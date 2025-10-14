@@ -7,15 +7,12 @@ parameter "branch_names"
 parameter "ahu_type", :name => "AHU Type", :description => "Type of air handling unit",
   :default => "CAV", :domain => String  # ["CAV", "VAV", "DOAS", "MAU"]
 
-parameter "duct_type", :default => "SINGLE"  # (SINGLE | DUAL) Sets AHU distribution system to single-duct or dual duct
-
 import "system/unitary.pxt", :group => "unitary" do
   include "*"
   exclude "unitary_name|doas|sat_temp_max"
   parameter "fan_subcat", :default => "AHU Fans"
 end
 
-parameter "fan_return", :default => false  # Creates return fan for AHU system
 parameter "fan_return_rise", :default => 2.25['in H2O']  # Pressure rise across return fan.
 
 # rename design_ => sizing_
@@ -31,7 +28,6 @@ parameter "oa_frac_sch", :name => "Outdoor Air Schedule", :description => "Outdo
 parameter "oa_frac_max_sch", :name => "Outdoor Air Schedule", :description => "Outdoor air schedule controls when ventilation air is supplied",
   :default => "NONE"
 
-parameter "zone_max_oa_frac", :default => 1
 parameter "oa_min_flow", :default => Autosize  # Minimum design outdoor air flow rate {m3/s}
 parameter "oa_max_flow", :default => Autosize  # Maximum design outdoor air flow rate {m3/s}
 # or should be:?  oa_flow_min, oa_flow_max
@@ -239,14 +235,8 @@ parameter "clear_water_supply_tank", :default => ""
 %>
 <%
 
-# setting control_type (and other local variables)
-# could be done with rules that set a hidden/internal variable
-
-# can probably in-line this below instead:
 if (control_zone_name.empty?)
-  control_type = "Setpoint"
-else
-  control_type = "Load"
+  is_mz = true
 end
 
 if (sat_temp_max.nil?)
@@ -276,19 +266,19 @@ if (fan_mode == "SCHEDULE" and fan_mode_sch.empty?)
   fan_mode_sch = oa_sch  # Set cycling and continuous fan operation modes
 end
 
-# not needed with Unitary?
+
 controllers = []
-if (rac)
+if (is_mz && (rac))
   controllers << "#{ahu_name} Run Around Heating Mode Controller"
   controllers << "#{ahu_name} Run Around Cooling Mode Controller"
 end
-if (cool_coil_type == "WATER")
+if (is_mz && (cool_coil_type == "WATER"))
   controllers << "#{ahu_name} Cooling Coil Controller"
 end
-if (chiller_cond_hr)
+if (is_mz && (chiller_cond_hr))
   controllers << "#{ahu_name} Cond Coil Controller"
 end
-if (heat_coil_type == "WATER")
+if (is_mz && (heat_coil_type == "WATER"))
   controllers << "#{ahu_name} Heating Coil Controller"
 end
 
@@ -393,7 +383,7 @@ Sizing:System,
   No,                      !- 100% Outdoor Air in Cooling
   No,                      !- 100% Outdoor Air in Heating
 <% end %>
-  0.0085,                   !- Central Cooling Design Supply Air Humidity Ratio {kg-H2O/kg-Air}
+  0.008,                   !- Central Cooling Design Supply Air Humidity Ratio {kg-H2O/kg-Air}
   0.008,                   !- Central Heating Design Supply Air Humidity Ratio {kg-H2O/kg-Air}
   <%= cool_flow_method %>,               !- Cooling Supply Air Flow Rate Method
 <%# better to leave Cooling Supply Air Flow Rate blank unless Method is Flow/System %>
@@ -411,7 +401,7 @@ Sizing:System,
 <% if ahu_type == "DOAS" %>
   ;                     !- Zone Maximum Outdoor Air Fraction {dimensionless}
 <% else %>
-  <%= zone_max_oa_frac %>, !- Zone Maximum Outdoor Air Fraction {dimensionless}
+  1.0,                     !- Zone Maximum Outdoor Air Fraction {dimensionless}
   CoolingDesignCapacity,   !- Cooling Design Capacity Method
   Autosize,                !- Cooling Design Capacity {W}
   ,                        !- Cooling Design Capacity Per Floor Area {W/m2}
@@ -428,13 +418,15 @@ Sizing:System,
   VAV;                     !- Central Cooling Capacity Control Method
 <% end %>
 <% end %>
-<%# maybe better to switch on ahu_type instead? %>
+<%
+# maybe better to switch on ahu_type instead? 
+%>
 
 
 AirLoopHVAC,
   <%= ahu_name %>,         !- Name
 <% if (controllers.length > 0) %>
-  ,  !<%= ahu_name %> Controllers,  !- Controller List Name
+  <%= ahu_name %> Controllers,  !- Controller List Name
 <% else %>
   ,                        !- Controller List Name
 <% end %>
@@ -452,8 +444,9 @@ AirLoopHVAC,
   <%= ahu_name %> Equipment Outlet Nodes;  !- Supply Side Outlet Node Names
   !;  !- Design Return Air Flow Fraction of Supply Air Flow {}
 
-<%# Naming? < > Equipment Outlet Nodes => < > Supply Equipment Outlet Nodes?
- or something with Unitary?
+<%
+# Naming? < > Equipment Outlet Nodes => < > Supply Equipment Outlet Nodes?
+# or something with Unitary?
  %>
 
 NodeList,
@@ -480,15 +473,12 @@ NodeList,
 
 ! Can have one block earlier that sets supply_equipment_outlet_node
 
-! Controller not needed with Unitary...?
-<%# NOTE:  Possibly don't need controllers with UnitarySystem %>
-<%# NOTE:  AirLoopHVAC:ControllerList needs at least one controller %>
 <% if (controllers.length > 0) %>
-!AirLoopHVAC:ControllerList,
-!  <%= ahu_name %> Controllers,  !- Name
+AirLoopHVAC:ControllerList,
+  <%= ahu_name %> Controllers,  !- Name
 <% EnergyPlus.each(controllers) do |controller| %>
-!  Controller:WaterCoil,    !- Controller Object Type
-!  <%= controller %>,       !- Controller Name
+  Controller:WaterCoil,    !- Controller Object Type
+  <%= controller %>,       !- Controller Name
 <% end %>
 <% end %>
 
@@ -499,11 +489,12 @@ AvailabilityManagerAssignmentList,
   AvailabilityManager:NightCycle,  !- Availability Manager 1 Object Type
   <%= ahu_name %> Availability Manager;  !- Availability Manager 1 Name
 
-<%# NOTE:  NightCycle does not affect ALL objects that reference the specified Fan Schedule Name; it only influences
-the fan objects connected to this air system with that schedule.
-NOTE2:  NightCycle also activates the outdoor air system when the fans turn on.  If outdoor air should be off
-for night cycling, specify a different schedule for Minimum Outdoor Air Schedule Name on Controller:OutdoorAir.
-*DOAS NOTE:  DOAS should only cycle the zone fan coil units...but unfortunately this doesn't work.
+<%
+# NOTE:  NightCycle does not affect ALL objects that reference the specified Fan Schedule Name; it only influences
+#the fan objects connected to this air system with that schedule.
+#NOTE2:  NightCycle also activates the outdoor air system when the fans turn on.  If outdoor air should be off
+#for night cycling, specify a different schedule for Minimum Outdoor Air Schedule Name on Controller:OutdoorAir.
+#*DOAS NOTE:  DOAS should only cycle the zone fan coil units...but unfortunately this doesn't work.
 %>
 AvailabilityManager:NightCycle,
   <%= ahu_name %> Availability Manager,  !- Name
@@ -558,93 +549,6 @@ Branch,
   <%= ahu_name %> Humidifier Outlet Node;  !- Component Outlet Node Name
 <% end %>
 
-Branch,
-  <%= ahu_name %> Main Branch,  !- Name
-  ,                        !- Pressure Drop Curve Name
-<% if (fan_return) %>
-  <% if (fan_speed == "CONSTANT") %>
-  Fan:ConstantVolume,      !- Component Object Type
-  <% elsif (fan_speed == "VARIABLE") %>
-  Fan:VariableVolume,      !- Component Object Type
-  <% end %>
-  <%= ahu_name %> Return Fan,  !- Component Name
-  <%= ahu_name %> Supply Equipment Inlet Node,  !- Component Inlet Node Name
-  <%= ahu_name %> Return Fan Outlet Node,  !- Component Outlet Node Name
-  AirLoopHVAC:OutdoorAirSystem,  !- Component Object Type
-  <%= ahu_name %> OA System,  !- Component Name
-  <%= ahu_name %> Return Fan Outlet Node,  !- Component Inlet Node Name
-  <%= ahu_name %> Unitary Inlet Node,  !- Component Outlet Node Name
-<% else %>
-  AirLoopHVAC:OutdoorAirSystem,  !- Component Object Type
-  <%= ahu_name %> OA System,  !- Component Name
-  <%= ahu_name %> Supply Equipment Inlet Node,  !- Component Inlet Node Name
-  <%= ahu_name %> Unitary Inlet Node,  !- Component Outlet Node Name
-<% end %>
-<% if (duct_type == "SINGLE") %>
-  AirLoopHVAC:UnitarySystem,  !- Component Object Type
-  <%= ahu_name %> Unitary,  !- Component Name
-  <%= ahu_name %> Unitary Inlet Node,  !- Component Inlet Node Name
-  <%= ahu_name %> Unitary Outlet Node;  !- Component Outlet Node Name
-<% else %>
-! DUAL DUCT
-! Can this work with Unitary?
-!
-!   <% if (fan_speed == "CONSTANT") %>
-!   Fan:ConstantVolume,      !- Component Object Type
-!   <% elsif (fan_speed == "VARIABLE") %>
-!   Fan:VariableVolume,      !- Component Object Type
-!   <% end %>
-!   <%= ahu_name %> Supply Fan,   !- Component Name
-!   <%= ahu_name %> Equipment Inlet Node, !- Component Inlet Node Name
-!   <%= ahu_name %> Supply Fan Outlet Node;  !- Component Outlet Node Name
-!
-! ConnectorList,
-!   <%= ahu_name %> Dual Duct Connectors,        !- Name
-!   Connector:Splitter,                             !- Connector Object Type
-!   <%= ahu_name %> DualDuctAirSplitter;         !- Connector Name
-!
-! Connector:Splitter,
-!   <%= ahu_name %> DualDuctAirSplitter,         !- Name
-!   <%= ahu_name %> Main Branch,                 !- Inlet Branch Name
-!   <%= ahu_name %> CD Branch,                   !- Outlet Branch 1 Name
-!   <%= ahu_name %> HD Branch;                   !- Outlet Branch 2 Name
-!
-! Branch,
-!   <%= ahu_name %> CD Branch,                   !- Name
-!   ,                                               !- Pressure Drop Curve Name
-!   <% if (cool_coil_type == "DX-AIR") %>
-!   CoilSystem:Cooling:DX,                          !- Component Object Type
-!   <% elsif (cool_coil_type == "WATER") %>
-!   Coil:Cooling:Water,                             !- Component Object Type
-!   <% end %>
-!   <%= ahu_name %> Cooling Coil,                !- Component Name
-!   <%= ahu_name %> Cold Deck Inlet Node,        !- Component Inlet Node Name
-!   <%= ahu_name %> Cold Deck Outlet Node;       !- Component Outlet Node Name
-!
-! Branch,
-!   <%= ahu_name %> HD Branch,                   !- Name
-!   ,                                               !- Pressure Drop Curve Name
-!   <% if (chiller_cond_hr) %>
-!   Coil:Heating:Water,                             !- Component Object Type
-!   <%= ahu_name %> Cond Coil,                !- Component Name
-!   <%= ahu_name %> Hot Deck Inlet Node,         !- Component Inlet Node Name
-!   <%= ahu_name %> Cond Coil Outlet Node;        !- Component Outlet Node Name
-!   <% end %>
-!   <% if (heat_coil_type == "COMBUSTION") %>
-!   Coil:Heating:Fuel,                               !- Component Object Type
-!   <% elsif (heat_coil_type == "RESISTANCE") %>
-!   Coil:Heating:Electric,                          !- Component Object Type
-!   <% elsif (heat_coil_type == "WATER") %>
-!   Coil:Heating:Water,                             !- Component Object Type
-!   <% end %>
-!   <%= ahu_name %> Heating Coil,                !- Component Name
-!   <% if (chiller_cond_hr) %>
-!   <%= ahu_name %> Cond Coil Outlet Node,         !- Component Inlet Node Name
-!   <% else %>
-!   <%= ahu_name %> Hot Deck Inlet Node,         !- Component Inlet Node Name
-!   <% end %>
-!   <%= ahu_name %> Hot Deck Outlet Node;        !- Component Outlet Node Name
-<% end %>
 
 <% if (fan_return) %>
   <% if (fan_speed == "CONSTANT") %>
@@ -669,7 +573,7 @@ Branch,
     <%= fan_flow_min_method %>,                !- Fan Power Minimum Flow Rate Input Method
     <%= fan_flow_min_frac %>,  !- Fan Power Minimum Flow Fraction {}
     <%= fan_flow_min %>,                        !- Fan Power Minimum Flow Rate {m3/s}
-    <%= fan_motor_eff %>,    !- Motor Efficiency
+    <%= fan_motor_eff %>,    !- Motor EfficiencySetpointManager:MixedAir
     <%= fan_motor_frac %>,   !- Motor In Airstream Fraction
     0.0408,                  !- Fan Power Coefficient 1
     0.088,                   !- Fan Power Coefficient 2
@@ -754,23 +658,23 @@ Schedule:Constant,
 
 <% if (oa_energy_recovery) %>
 
-<%#
-NOTE:  For HeatExchanger controls to work properly must also set the appropriate controls
-on Controller:OutdoorAir.  Specifically Economizer Control Type should be set to FixedDryBulb
-(or similar--just not NoEconomizer, even if it's a DOAS).  Economizer Maximum and Minimum Limit
-Dry-Bulb Temperatures are used to define when the HeatExchanger should run.
-Economizer Control Types for DifferentialDryBulb and DifferentialEnthalpy can also be used.
+<%
+#NOTE:  For HeatExchanger controls to work properly must also set the appropriate controls
+#on Controller:OutdoorAir.  Specifically Economizer Control Type should be set to FixedDryBulb
+#(or similar--just not NoEconomizer, even if it's a DOAS).  Economizer Maximum and Minimum Limit
+#Dry-Bulb Temperatures are used to define when the HeatExchanger should run.
+#Economizer Control Types for DifferentialDryBulb and DifferentialEnthalpy can also be used.
 
-UPDATE:  Default behavior for the HeatExchanger is to turn off when the Controller:OutdoorAir
-activates economizing.  To get the HeatExchanger to run, Economizer Lockout must be set to No.
-In this case, it appears that Supply Air Outlet Temperature Control frequently does not work
-correctly!  The HeatExchanger sometimes overheats beyond the OutdoorAirPretreat setpoint
-requiring extra cooling.  There is no apparent workaround.
+#UPDATE:  Default behavior for the HeatExchanger is to turn off when the Controller:OutdoorAir
+#activates economizing.  To get the HeatExchanger to run, Economizer Lockout must be set to No.
+#In this case, it appears that Supply Air Outlet Temperature Control frequently does not work
+#correctly!  The HeatExchanger sometimes overheats beyond the OutdoorAirPretreat setpoint
+#requiring extra cooling.  There is no apparent workaround.
 
-UPDATE:  An economizer control other than "NoEconomizer" on Controller:OutdoorAir is required
-in order to activate the economizer controls that allow heat recovery to be locked out.  When
-the outdoor temperature is warm enough that heat recovery would result in unnecessary cooling,
-it should be locked out.  Economizer Lockout must be set to "Yes" for the HeatExchanger.
+#UPDATE:  An economizer control other than "NoEconomizer" on Controller:OutdoorAir is required
+#in order to activate the economizer controls that allow heat recovery to be locked out.  When
+#the outdoor temperature is warm enough that heat recovery would result in unnecessary cooling,
+#it should be locked out.  Economizer Lockout must be set to "Yes" for the HeatExchanger.
 %>
 HeatExchanger:AirToAir:SensibleAndLatent,
   <%= ahu_name %> Energy Recovery Wheel,  !- Name
@@ -802,10 +706,10 @@ HeatExchanger:AirToAir:SensibleAndLatent,
   Yes;                     !- Economizer Lockout
 <% end %>
 
-<%#
-WARNING: For EvaporativeCooler:Indirect:ResearchSpecial, a Secondary Fan Flow Rate of zero causes a hard crash
-for variable flow air systems (probably doing a divide by zero).  Use a very small flow rate to simulate no
-extra fan energy from the secondary fan, e.g., when secondary air is return air.
+<%
+#WARNING: For EvaporativeCooler:Indirect:ResearchSpecial, a Secondary Fan Flow Rate of zero causes a hard crash
+#for variable flow air systems (probably doing a divide by zero).  Use a very small flow rate to simulate no
+#extra fan energy from the secondary fan, e.g., when secondary air is return air.
 %>
 <% if (oa_indirect_evap) %>
 EvaporativeCooler:Indirect:ResearchSpecial,
