@@ -16,30 +16,30 @@ Make your own local copy to override this and add user-defined objects/templates
 - performance curves (referenced by templates as a parameter)
 %>
 
-Output:Variable,
-    *,                       !- Key Value
-    Site Outdoor Air Drybulb Temperature,  !- Variable Name
-    hourly;                  !- Reporting Frequency
-
-Output:Variable,
-    *,                       !- Key Value
-    Pump Mass Flow Rate,     !- Variable Name
-    Hourly;                  !- Reporting Frequency
-
-Output:Variable,
-    *,                       !- Key Value
-    Water Heater Use Side Mass Flow Rate,  !- Variable Name
-    Hourly;                  !- Reporting Frequency
-
-Output:Variable,
-    *,                       !- Key Value
-    Water Heater Use Side Outlet Temperature,  !- Variable Name
-    Hourly;                  !- Reporting Frequency
-
-Output:Variable,
-    DHW Supply Outlet Node,  !- Key Value
-    System Node Mass Flow Rate,  !- Variable Name
-    Hourly;                  !- Reporting Frequency
+!Output:Variable,
+!    *,                       !- Key Value
+!    Site Outdoor Air Drybulb Temperature,  !- Variable Name
+!    hourly;                  !- Reporting Frequency
+!
+!Output:Variable,
+!    *,                       !- Key Value
+!    Pump Mass Flow Rate,     !- Variable Name
+!    Hourly;                  !- Reporting Frequency
+!
+!Output:Variable,
+!    *,                       !- Key Value
+!    Water Heater Use Side Mass Flow Rate,  !- Variable Name
+!    Hourly;                  !- Reporting Frequency
+!
+!Output:Variable,
+!    *,                       !- Key Value
+!    Water Heater Use Side Outlet Temperature,  !- Variable Name
+!    Hourly;                  !- Reporting Frequency
+!
+!Output:Variable,
+!    DHW Supply Outlet Node,  !- Key Value
+!    System Node Mass Flow Rate,  !- Variable Name
+!    Hourly;                  !- Reporting Frequency
 
 Output:Variable,
     DHW DEMAND LOAD PROFILE INLET NODE,  !- Key Value
