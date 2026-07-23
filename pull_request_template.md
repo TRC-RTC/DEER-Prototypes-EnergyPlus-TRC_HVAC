@@ -1,7 +1,11 @@
 # Pull Request (PR) Description
-**NOTE: SUBMIT A PLAN TO DEER SUPPORT PRIOR TO WORKING ON CODE FOR A MEASURE, FEATURE, OR BUG TO BE CONNECTED WITH OTHERS WORKING ON THE SAME ISSUE OR TO RECEIVE FEEDBACK ON YOUR PROPOSED METHOD**
+Energy Modeler: Jake Slusarczyk
+Post Processing: Jake Slusarczyk
 
-**DEER Support Email: DeerSupport@guidehouse.com**
+Measure Summary:
+This measure includes yhe replacement of an existing or standard supply fan induction motor with a software-controlled SRM in a HVAC packaged or split unit used in a commercial or industrial building
+
+Note: Measure specific update to the hvac-zone.pxt file to include a minimum air flow requirement in order to resolve EnergyPlus model failures.
 
 ### PR Author
 - [ ] Make sure the PR branch is up to date with main branch at the time of the PR submission
