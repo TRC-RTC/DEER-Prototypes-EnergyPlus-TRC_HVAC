@@ -1,5 +1,5 @@
---Delete the unmodded MFm/SFm records, insert the modded MFm/SFm records
---Updated Energy Imapct ID, 07/07/2026
+--Delete the unmodded records, insert the modded records
+--TRC Updated Energy Imapct ID, 07/07/2026
 
 SET search_path TO "MC_results_database";
 
