@@ -8,6 +8,7 @@ parameter "run_name", :default=>"Building"
 
 # CZ/Vintages parameters
 # window
+# TRC - 2026-09-22 Added the following variables to parameterize the U-Factor and SHGC for windows.
 parameter "glass_u", :default=>0.66['U-IP']
 parameter "glass_shgc", :default=>0.52
 
@@ -4198,6 +4199,7 @@ Material:NoMass,
 !Visible Transmittance
 WindowMaterial:SimpleGlazingSystem,
     Glass,                   !- Name
+<%# TRC - 2026-09-22 Added the following variables to parameterize the U-Factor and SHGC for windows. %>
     <%=glass_u%>,            !- U-Factor {W/m2-K}
     <%=glass_shgc%>,         !- Solar Heat Gain Coefficient
     0.88;                    !- Visible Transmittance
