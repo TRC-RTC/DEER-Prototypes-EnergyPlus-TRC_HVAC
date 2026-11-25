@@ -207,8 +207,8 @@ group "hvac_zone", :prefix => "main_" do
   parameter "cool_flow_min_frac", :default => nil
   parameter "atu_reheat_coil_type", :default => "NONE"
   parameter "atu_reheat_control", :default => nil
+  #TRC - SWSV017-01 measure: adding variable to parametrize OA economizer control type and adjusting cooling setpoint for fan operation in NCGF
   parameter "fan_speed_3_power_frac", :default => 1
-  parameter "atu_leak_supply_frac", :default => 0
   parameter "min_limit_type", :default => "FixedMinimum"
   parameter "tstat_cool_temp1", :default => 75['F']
   parameter "tstat_cool_temp2", :default => 85['F']
@@ -259,7 +259,7 @@ group "hvac_system", :prefix => "main_" do
   parameter "fan_speed_2_power_frac", :default => 0.418596373
   parameter "fan_speed_3_flow_frac", :default => 1
   parameter "fan_speed_3_power_frac", :default => 1
-  parameter "atu_leak_supply_frac", :default => 0
+  #TRC - SWSV017-01 measure: adding variable to parametrize OA economizer control type and adjusting cooling setpoint for fan operation in NCGF
   parameter "min_limit_type", :default => "FixedMinimum"
   parameter "tstat_cool_temp1", :default => 75['F']
   parameter "tstat_cool_temp2", :default => 85['F']
